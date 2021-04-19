@@ -22,6 +22,7 @@ import com.megacrit.cardcrawl.dungeons.TheCity;
 import com.megacrit.cardcrawl.helpers.CardHelper;
 import com.megacrit.cardcrawl.helpers.FontHelper;
 import com.megacrit.cardcrawl.localization.*;
+import com.megacrit.cardcrawl.map.MapEdge;
 import com.megacrit.cardcrawl.map.MapRoomNode;
 import com.megacrit.cardcrawl.rooms.AbstractRoom;
 import com.megacrit.cardcrawl.unlock.UnlockTracker;
@@ -144,6 +145,8 @@ public class DefaultMod implements
     // Atlas and JSON files for the Animations
     public static final String THE_DEFAULT_SKELETON_ATLAS = "PathfindHelpModResources/images/char/defaultCharacter/skeleton.atlas";
     public static final String THE_DEFAULT_SKELETON_JSON = "PathfindHelpModResources/images/char/defaultCharacter/skeleton.json";
+    private boolean firstTime = true;
+    ArrayList<MapRoomNode> listOfRooms;
 
     // =============== MAKE IMAGE PATHS =================
 
@@ -180,7 +183,7 @@ public class DefaultMod implements
 
     public DefaultMod() {
         logger.info("Subscribe to BaseMod hooks");
-
+        listOfRooms = new ArrayList<>();
         BaseMod.subscribe(this);
         
       /*
@@ -581,49 +584,61 @@ public class DefaultMod implements
 
     @Override
     public void receivePostDungeonInitialize() {
-//        try {
-//            PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs.txt", "UTF-8");
-//            AbstractPlayer player = AbstractDungeon.player;
-//            StringBuilder sb = new StringBuilder();
-//            sb.append("character,ascension,floor,hp,gold,deck,relics\n");
-//            if (player.chosenClass == AbstractPlayer.PlayerClass.IRONCLAD) {
-//                sb.append(0 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.THE_SILENT) {
-//                sb.append(1 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.DEFECT) {
-//                sb.append(2 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.WATCHER) {
-//                sb.append(3 + ",");
-//            }
-//
-//            sb.append(AbstractDungeon.ascensionLevel + ",");
-//            sb.append(AbstractDungeon.floorNum + ",");
-//            sb.append(player.currentHealth + ",");
-//            sb.append(player.gold + ",");
-//            for (String s : player.masterDeck.getCardNames()) {
-//                sb.append(s + "|");
-//            }
-//            sb.deleteCharAt(sb.length() - 1);
-//            sb.append(",");
-//            for (String r : player.getRelicNames()) {
-//                sb.append(r + "|");
-//            }
-//            sb.deleteCharAt(sb.length() - 1);
-//            writer.print(sb.toString());
-//            writer.close();
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        } catch (UnsupportedEncodingException e) {
-//            e.printStackTrace();
-//        }
+
+
     }
 
     @Override
     public void receivePostDungeonUpdate() {
-        try {
-            PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs.txt", "UTF-8");
-            AbstractPlayer player = AbstractDungeon.player;
-            StringBuilder sb = new StringBuilder();
+        if(firstTime){
+            try {
+                    PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs2.txt", "UTF-8");
+                    StringBuilder sb = new StringBuilder();
+                    logger.info("first time");
+                    ArrayList<ArrayList<MapRoomNode>> map = AbstractDungeon.map;
+
+                    for (ArrayList<MapRoomNode> listMap : map) {
+                        for (MapRoomNode m : listMap) {
+                            if (m.hasEdges()) {
+                                //sb.append("(").append(m.x).append(",").append(m.y).append(",").append(m.getRoomSymbol(true)).append(") ");
+                                listOfRooms.add(m);
+                            }
+                        }
+
+                    }
+
+                    /*for (MapRoomNode r : listOfRooms){
+                        sb.append("(").append(r.x).append(",").append(r.y).append(",").append(r.getRoomSymbol(true)).append(") : ");
+
+                        writer.println(sb.toString());
+                        logger.info(sb.toString());
+                        sb = new StringBuilder();
+                    }*/
+
+                    MapRoomNode current = listOfRooms.get(0);
+                    for(int i = 0; i < AbstractDungeon.MAP_HEIGHT; i++){
+                        sb.append("(").append(current.x).append(",").append(current.y).append(",").append(current.getRoomSymbol(true)).append(") ");
+                        MapEdge edge = current.getEdges().get(0);
+
+                        for(MapRoomNode mrn : listOfRooms){
+                            if(edge.dstX == mrn.x && edge.dstY == mrn.y){
+                                current = mrn;
+                                break;
+                            }
+                        }
+                    }
+                writer.println(sb.toString());
+                logger.info(sb.toString());
+                    writer.close();
+                    firstTime = false;
+
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+       // try {
+            /*AbstractPlayer player = AbstractDungeon.player;
+
             sb.append("character,ascension,floor,hp,gold,deck,relics\n");
             if (player.chosenClass == AbstractPlayer.PlayerClass.IRONCLAD) {
                 sb.append(0 + ",");
@@ -649,11 +664,10 @@ public class DefaultMod implements
             }
             sb.deleteCharAt(sb.length() - 1);
             writer.print(sb.toString());
-            writer.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
+            writer.close()*/;
+            //writer.close();
+        //} catch (Exception e) {
+          //  e.printStackTrace();
+        //}
     }
 }
