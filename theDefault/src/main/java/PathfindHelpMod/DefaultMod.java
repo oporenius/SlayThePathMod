@@ -44,6 +44,7 @@ import PathfindHelpMod.variables.DefaultSecondMagicNumber;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Properties;
 
 //TODO: DON'T MASS RENAME/REFACTOR
@@ -85,7 +86,8 @@ public class DefaultMod implements
         PostInitializeSubscriber,
         PostBattleSubscriber,
         PostDungeonInitializeSubscriber,
-        PostDungeonUpdateSubscriber {
+        PostDungeonUpdateSubscriber,
+        StartActSubscriber{
     // Make sure to implement the subscribers *you* are using (read basemod wiki). Editing cards? EditCardsSubscriber.
     // Making relics? EditRelicsSubscriber. etc., etc., for a full list and how to make your own, visit the basemod wiki.
     public static final Logger logger = LogManager.getLogger(DefaultMod.class.getName());
@@ -145,8 +147,11 @@ public class DefaultMod implements
     // Atlas and JSON files for the Animations
     public static final String THE_DEFAULT_SKELETON_ATLAS = "PathfindHelpModResources/images/char/defaultCharacter/skeleton.atlas";
     public static final String THE_DEFAULT_SKELETON_JSON = "PathfindHelpModResources/images/char/defaultCharacter/skeleton.json";
-    private boolean firstTime = true;
+    private boolean firstTime = false;
     ArrayList<MapRoomNode> listOfRooms;
+    ArrayList<ArrayList<MapRoomNode>> paths;
+    MapRoomNode previousRoom;
+    ArrayList<StringBuilder> pathStrings;
 
     // =============== MAKE IMAGE PATHS =================
 
@@ -184,6 +189,8 @@ public class DefaultMod implements
     public DefaultMod() {
         logger.info("Subscribe to BaseMod hooks");
         listOfRooms = new ArrayList<>();
+        paths = new ArrayList<>();
+        pathStrings = new ArrayList<>();
         BaseMod.subscribe(this);
         
       /*
@@ -544,130 +551,201 @@ public class DefaultMod implements
     public void receivePostBattle(AbstractRoom abstractRoom) {
         logger.info("Start post battle");
 
-//        try {
-//            PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs.txt", "UTF-8");
-//            AbstractPlayer player = AbstractDungeon.player;
-//            StringBuilder sb = new StringBuilder();
-//            sb.append("character,ascension,floor,hp,gold,deck,relics\n");
-//            if (player.chosenClass == AbstractPlayer.PlayerClass.IRONCLAD) {
-//                sb.append(0 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.THE_SILENT) {
-//                sb.append(1 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.DEFECT) {
-//                sb.append(2 + ",");
-//            } else if (player.chosenClass == AbstractPlayer.PlayerClass.WATCHER) {
-//                sb.append(3 + ",");
-//            }
-//
-//            sb.append(AbstractDungeon.ascensionLevel + ",");
-//            sb.append(AbstractDungeon.floorNum + ",");
-//            sb.append(player.currentHealth + ",");
-//            sb.append(player.gold + ",");
-//            for (String s : player.masterDeck.getCardNames()) {
-//                sb.append(s + "|");
-//            }
-//            sb.deleteCharAt(sb.length() - 1);
-//            sb.append(",");
-//            for (String r : player.getRelicNames()) {
-//                sb.append(r + "|");
-//            }
-//            sb.deleteCharAt(sb.length() - 1);
-//            writer.print(sb.toString());
-//            writer.close();
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        } catch (UnsupportedEncodingException e) {
-//            e.printStackTrace();
-//        }
+
     }
 
 
     @Override
     public void receivePostDungeonInitialize() {
+        firstTime = true;
 
+    }
 
+    private MapRoomNode getNode(MapEdge edge) {
+        for (MapRoomNode mrn : listOfRooms) {
+            if (edge.dstX == mrn.x && edge.dstY == mrn.y) {
+                return mrn;
+            }
+        }
+        return null;
     }
 
     @Override
     public void receivePostDungeonUpdate() {
-        if(firstTime){
+        if (firstTime) {
             try {
-                    PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs2.txt", "UTF-8");
-                    StringBuilder sb = new StringBuilder();
-                    logger.info("first time");
-                    ArrayList<ArrayList<MapRoomNode>> map = AbstractDungeon.map;
+                PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs3.csv", "UTF-8");
 
-                    for (ArrayList<MapRoomNode> listMap : map) {
-                        for (MapRoomNode m : listMap) {
-                            if (m.hasEdges()) {
-                                //sb.append("(").append(m.x).append(",").append(m.y).append(",").append(m.getRoomSymbol(true)).append(") ");
-                                listOfRooms.add(m);
-                            }
-                        }
+                logger.info("first time");
+                ArrayList<ArrayList<MapRoomNode>> map = AbstractDungeon.map;
+                ArrayList<MapRoomNode> currentNodes = new ArrayList<>();
+                ArrayList<MapRoomNode> temp;
 
-                    }
+                //Adds all active map nodes to a list
+                AddActiveNodesToList(map, currentNodes);
 
-                    /*for (MapRoomNode r : listOfRooms){
-                        sb.append("(").append(r.x).append(",").append(r.y).append(",").append(r.getRoomSymbol(true)).append(") : ");
+                fillPaths(currentNodes);
 
-                        writer.println(sb.toString());
-                        logger.info(sb.toString());
-                        sb = new StringBuilder();
-                    }*/
+                firstTime = false;
+                previousRoom = AbstractDungeon.currMapNode;
+                for (ArrayList<MapRoomNode> pathStrongList : paths) {
+                    fillPathStrings(pathStrongList);
+                }
 
-                    MapRoomNode current = listOfRooms.get(0);
-                    for(int i = 0; i < AbstractDungeon.MAP_HEIGHT; i++){
-                        sb.append("(").append(current.x).append(",").append(current.y).append(",").append(current.getRoomSymbol(true)).append(") ");
-                        MapEdge edge = current.getEdges().get(0);
-
-                        for(MapRoomNode mrn : listOfRooms){
-                            if(edge.dstX == mrn.x && edge.dstY == mrn.y){
-                                current = mrn;
-                                break;
-                            }
-                        }
-                    }
-                writer.println(sb.toString());
-                logger.info(sb.toString());
-                    writer.close();
-                    firstTime = false;
-
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-       // try {
-            /*AbstractPlayer player = AbstractDungeon.player;
 
-            sb.append("character,ascension,floor,hp,gold,deck,relics\n");
-            if (player.chosenClass == AbstractPlayer.PlayerClass.IRONCLAD) {
-                sb.append(0 + ",");
-            } else if (player.chosenClass == AbstractPlayer.PlayerClass.THE_SILENT) {
-                sb.append(1 + ",");
-            } else if (player.chosenClass == AbstractPlayer.PlayerClass.DEFECT) {
-                sb.append(2 + ",");
-            } else if (player.chosenClass == AbstractPlayer.PlayerClass.WATCHER) {
-                sb.append(3 + ",");
+        if (previousRoom != AbstractDungeon.currMapNode) {
+            filterOutPathsNotTaken();
+        }
+
+
+        previousRoom = AbstractDungeon.currMapNode;
+
+        AbstractPlayer player = AbstractDungeon.player;
+
+        int character = -1;
+        if (player.chosenClass == AbstractPlayer.PlayerClass.IRONCLAD) {
+            character = 0;
+        } else if (player.chosenClass == AbstractPlayer.PlayerClass.THE_SILENT) {
+            character = 1;
+        } else if (player.chosenClass == AbstractPlayer.PlayerClass.DEFECT) {
+            character = 2;
+        } else if (player.chosenClass == AbstractPlayer.PlayerClass.WATCHER) {
+            character = 3;
+        }
+
+        int ascension = AbstractDungeon.ascensionLevel;
+        int floor = AbstractDungeon.floorNum+1;
+        int health = player.currentHealth;
+        int gold = player.gold;
+
+        StringBuilder deckSB = new StringBuilder();
+        for (String s : player.masterDeck.getCardNames()) {
+            deckSB.append(s).append("|");
+        }
+        deckSB.deleteCharAt(deckSB.length() - 1);
+
+        StringBuilder relicsSB = new StringBuilder();
+        for (String r : player.getRelicNames()) {
+            relicsSB.append(r).append("|");
+        }
+        relicsSB.deleteCharAt(relicsSB.length() - 1);
+
+
+        try {
+            PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs3.csv", "UTF-8");
+            writer.println("character,ascension,floor,hp,gold,path,deck,relics");
+
+            for(StringBuilder sb : pathStrings){
+                String result = character + "," +
+                        ascension + "," +
+                        floor + "," +
+                        health + "," +
+                        gold + "," +
+                        sb.toString() + "," +
+                        deckSB.toString() + "," +
+                        relicsSB.toString();
+                writer.println(result);
             }
 
-            sb.append(AbstractDungeon.ascensionLevel + ",");
-            sb.append(AbstractDungeon.floorNum + ",");
-            sb.append(player.currentHealth + ",");
-            sb.append(player.gold + ",");
-            for (String s : player.masterDeck.getCardNames()) {
-                sb.append(s + "|");
+            writer.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /*
+    Adds only the paths that the current node is in to a temp list, then replaces the paths list with the temp list.
+     */
+    private void filterOutPathsNotTaken() {
+        ArrayList<ArrayList<MapRoomNode>> tempPaths = new ArrayList<>();
+        pathStrings.clear();
+        logger.info(AbstractDungeon.currMapNode.x + " " + AbstractDungeon.currMapNode.y);
+
+        for (ArrayList<MapRoomNode> mapRoomNodes : paths) {
+            for (MapRoomNode m : mapRoomNodes) {
+                if (m.x == AbstractDungeon.currMapNode.x && m.y == AbstractDungeon.currMapNode.y) {
+                    tempPaths.add(mapRoomNodes);
+                    fillPathStrings(mapRoomNodes);
+                }
             }
-            sb.deleteCharAt(sb.length() - 1);
-            sb.append(",");
-            for (String r : player.getRelicNames()) {
-                sb.append(r + "|");
+        }
+        paths = tempPaths;
+    }
+
+
+    private void fillPathStrings(ArrayList<MapRoomNode> mapRoomNodes) {
+        StringBuilder tempSB = new StringBuilder();
+        for (MapRoomNode mn : mapRoomNodes) {
+            tempSB.append(mn.getRoomSymbol(true)).append("|");
+        }
+        tempSB.append("BOSS|");
+        boolean exists = false;
+        for (StringBuilder stringBuilder : pathStrings) {
+            if (stringBuilder.toString().equals(tempSB.toString())) {
+                exists = true;
+                break;
             }
-            sb.deleteCharAt(sb.length() - 1);
-            writer.print(sb.toString());
-            writer.close()*/;
-            //writer.close();
-        //} catch (Exception e) {
-          //  e.printStackTrace();
-        //}
+        }
+        if (!exists) {
+            pathStrings.add(tempSB);
+        }
+    }
+
+    private void fillPaths(ArrayList<MapRoomNode> currentNodes) {
+        ArrayList<MapRoomNode> temp;
+        int pathIndex;
+        for (int j = 0; j < AbstractDungeon.MAP_HEIGHT; j++) {
+            temp = new ArrayList<>(); //what the new current nodes should be
+            pathIndex = 0;
+            for (int k = 0; k < currentNodes.size(); k++) {
+                paths.get(pathIndex).add(currentNodes.get(k)); //Adds current node to path
+                ArrayList<MapEdge> edges = currentNodes.get(k).getEdges();
+                for (int l = 0; l < edges.size(); l++) {
+                    temp.add(getNode(edges.get(l))); //Adds to new node list
+                    if (l > 0) {
+
+                        ArrayList<MapRoomNode> temp2 = new ArrayList<>();
+                        temp2.addAll(paths.get(pathIndex));
+                        //paths.get(pathIndex)
+                        pathIndex++;
+                        paths.add(pathIndex, temp2); //Creates new path
+                    }
+                }
+                pathIndex++;
+            }
+            currentNodes = temp;
+        }
+    }
+
+    private void AddActiveNodesToList(ArrayList<ArrayList<MapRoomNode>> map, ArrayList<MapRoomNode> currentNodes) {
+        ArrayList<MapRoomNode> temp;
+        for (ArrayList<MapRoomNode> listMap : map) {
+            for (MapRoomNode m : listMap) {
+                if (m.hasEdges()) {
+                    //sb.append("(").append(m.x).append(",").append(m.y).append(",").append(m.getRoomSymbol(true)).append(") ");
+                    listOfRooms.add(m);
+                    if (m.y == 0) {
+                        currentNodes.add(m);
+                        temp = new ArrayList<>();
+                        //temp.add(m);
+                        paths.add(temp);
+
+
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void receiveStartAct() {
+        firstTime = true;
+        listOfRooms.clear();
+        paths.clear();
+        pathStrings.clear();
     }
 }
