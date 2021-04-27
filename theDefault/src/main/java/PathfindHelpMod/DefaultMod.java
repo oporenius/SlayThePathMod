@@ -151,7 +151,8 @@ public class DefaultMod implements
     ArrayList<MapRoomNode> listOfRooms;
     ArrayList<ArrayList<MapRoomNode>> paths;
     MapRoomNode previousRoom;
-    ArrayList<StringBuilder> pathStrings;
+    //ArrayList<StringBuilder> pathStrings;
+    ArrayList<ArrayList<String>> pathStrings;
 
     // =============== MAKE IMAGE PATHS =================
 
@@ -574,7 +575,7 @@ public class DefaultMod implements
     public void receivePostDungeonUpdate() {
         if (firstTime) {
             try {
-                PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs3.csv", "UTF-8");
+                //PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs3.csv", "UTF-8");
 
                 logger.info("first time");
                 ArrayList<ArrayList<MapRoomNode>> map = AbstractDungeon.map;
@@ -636,19 +637,19 @@ public class DefaultMod implements
 
 
         try {
-            PrintWriter writer = new PrintWriter("C:\\SlayTheSpireModding\\inputs3.csv", "UTF-8");
-            writer.println("character,ascension,floor,hp,gold,path,deck,relics");
+            PrintWriter writer = new PrintWriter("C:\\SlayThePath\\SlayThePath\\input.csv", "UTF-8");
+            writer.println("character,ascension,floor,hp,gold,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16,deck,relics");
 
-            for(StringBuilder sb : pathStrings){
-                String result = character + "," +
-                        ascension + "," +
-                        floor + "," +
-                        health + "," +
-                        gold + "," +
-                        sb.toString() + "," +
-                        deckSB.toString() + "," +
-                        relicsSB.toString();
-                writer.println(result);
+            for(ArrayList<String> sb : pathStrings){
+                StringBuilder result = new StringBuilder();
+                result.append(character).append(",").append(ascension).append(",").append(floor).append(",");
+                result.append(health).append(",").append(gold).append(",");
+                for(int i = 0; i < sb.size(); i++){
+                    result.append(sb.get(i)).append(",");
+                }
+                result.append(deckSB.toString()).append(",").append(relicsSB.toString());
+
+                writer.println(result.toString());
             }
 
             writer.close();
@@ -678,20 +679,33 @@ public class DefaultMod implements
 
 
     private void fillPathStrings(ArrayList<MapRoomNode> mapRoomNodes) {
-        StringBuilder tempSB = new StringBuilder();
+        ArrayList<String> tempList = new ArrayList<>();
         for (MapRoomNode mn : mapRoomNodes) {
-            tempSB.append(mn.getRoomSymbol(true)).append("|");
+            //tempSB.append(mn.getRoomSymbol(true)).append("|");
+            tempList.add(mn.getRoomSymbol(true));
         }
-        tempSB.append("BOSS|");
+        //tempSB.append("BOSS|");
+        tempList.add("BOSS");
         boolean exists = false;
-        for (StringBuilder stringBuilder : pathStrings) {
-            if (stringBuilder.toString().equals(tempSB.toString())) {
+        for (ArrayList<String> l : pathStrings) {
+            boolean b = true;
+            for(int i = 0; i < l.size(); i++){
+                if(!l.get(i).equals(tempList.get(i))){
+                    b = false;
+                    break;
+                }
+            }
+            if(b){
                 exists = true;
                 break;
             }
+            //if (stringBuilder.toString().equals(tempSB.toString())) {
+            //    exists = true;
+            //    break;
+            //}
         }
         if (!exists) {
-            pathStrings.add(tempSB);
+            pathStrings.add(tempList);
         }
     }
 
